@@ -1,19 +1,23 @@
 ---
-- name: Initial Provisioning via Ansible Pull
+- name: Device Specific Provisioning
   hosts: localhost
   connection: local
   become: true
 
   tasks:
-    - name: Ensure the system is updated
+    - name: Common - Install basic tools
       apt:
+        name: [htop, neofetch, vim, tree]
+        state: present
         update_cache: yes
-        upgrade: dist
 
-    - name: Create a 'success' flag file
+    - name: VM Specific - Install QEMU Guest Agent
+      apt:
+        name: qemu-guest-agent
+        state: present
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Identity - Create a customized motd
       copy:
-        content: "Ansible-pull ran successfully on {{ ansible_date_time.date }}"
-        dest: /home/ratel/ansible_success.txt
-        owner: ratel
-        group: ratel
-        mode: '0644'
+        content: "Welcome to {{ ansible_hostname }}. Managed by Ansible Pull.\n"
+        dest: /etc/motd
