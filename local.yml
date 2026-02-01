@@ -1,0 +1,19 @@
+---
+- name: Initial Provisioning via Ansible Pull
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Ensure the system is updated
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Create a 'success' flag file
+      copy:
+        content: "Ansible-pull ran successfully on {{ ansible_date_time.date }}"
+        dest: /home/ratel/ansible_success.txt
+        owner: ratel
+        group: ratel
+        mode: '0644'
