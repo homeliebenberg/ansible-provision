@@ -7,7 +7,7 @@
   tasks:
     - name: Common - Install basic tools
       apt:
-        name: [htop, neofetch, vim, tree]
+        name: [htop, fastfetch, vim, tree]
         state: present
         update_cache: yes
 
