@@ -15,9 +15,35 @@
       apt:
         name: qemu-guest-agent
         state: present
-      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Desktop Specific - Install KDE Plasma Desktop
+      apt:
+        name:
+          - kde-plasma-desktop
+          - sddm
+        state: present
+      when: ansible_hostname == "zatestvmdeb01"
+
+    - name: Desktop Specific - Set default boot target to Graphical UI
+      file:
+        src: /lib/systemd/system/graphical.target
+        dest: /etc/systemd/system/default.target
+        state: link
+      when: ansible_hostname == "zatestvmdeb01"
+
+    - name: GRUB - Set GRUB_TIMEOUT to 1 second
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_TIMEOUT='
+        line: 'GRUB_TIMEOUT=1'
+        backup: yes
+      notify: Update GRUB
 
     - name: Identity - Create a customized motd
       copy:
         content: "Welcome to {{ ansible_hostname }}. Managed by Ansible Pull.\n"
         dest: /etc/motd
+
+  handlers:
+    - name: Update GRUB
+      command: update-grub
