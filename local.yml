@@ -22,14 +22,14 @@
           - kde-plasma-desktop
           - sddm
         state: present
-      when: ansible_hostname == "zatestvmdeb01"
+      when: ansible_hostname == "zatestvmtest01"
 
     - name: Desktop Specific - Set default boot target to Graphical UI
       file:
         src: /lib/systemd/system/graphical.target
         dest: /etc/systemd/system/default.target
         state: link
-      when: ansible_hostname == "zatestvmdeb01"
+      when: ansible_hostname == "zatestvmtest01"
 
     - name: GRUB - Set GRUB_TIMEOUT to 1 second
       lineinfile:
