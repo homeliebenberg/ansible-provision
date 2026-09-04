@@ -41,25 +41,35 @@
         purge: yes
       when: ansible_hostname == "zatestvmtest01"
 
+# --- Brave Nightly Installation
+    - name: Brave Nightly - Install repository prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - curl
+          - gnupg
+        state: present
+
     - name: Brave Nightly - Download repository GPG keyring
       get_url:
         url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser-nightly-archive-keyring.gpg
         dest: /usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg
         mode: '0644'
+        force: yes
       when: ansible_hostname == "zatestvmtest01"
 
     - name: Brave Nightly - Add APT repository
       apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg] https://brave-browser-apt-nightly.s3.brave.com/ nightlies main"
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg] https://brave-browser-apt-nightly.s3.brave.com/ nightly main"
         filename: brave-browser-nightly
         state: present
+        update_cache: yes
       when: ansible_hostname == "zatestvmtest01"
 
     - name: Brave Nightly - Install package
       apt:
         name: brave-browser-nightly
         state: present
-        update_cache: yes
       when: ansible_hostname == "zatestvmtest01"
 
 # ==============================================================================
