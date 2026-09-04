@@ -5,17 +5,25 @@
   become: true
 
   tasks:
+# ==============================================================================
+# Common applications
+# Install htop, fastfetch, tree, vim and qemu guest
+# ==============================================================================
     - name: Common - Install basic tools
       apt:
-        name: [htop, fastfetch, vim, tree]
+        name: [htop, fastfetch, tree, vim]
         state: present
         update_cache: yes
 
-    - name: VM Specific - Install QEMU Guest Agent
+    - name: Common - Install QEMU Guest Agent
       apt:
         name: qemu-guest-agent
         state: present
 
+# ==============================================================================
+# Desktop Customizations
+# Install KDE Plasma, Brave, Remove Firefox
+# ==============================================================================
     - name: Desktop Specific - Install KDE Plasma Desktop
       apt:
         name:
@@ -24,6 +32,40 @@
         state: present
       when: ansible_hostname == "zatestvmtest01"
 
+    - name: Desktop Specific - Remove Firefox ESR
+      apt:
+        name:
+          - firefox-esr
+          - firefox-esr-l10n-*
+        state: absent
+        purge: yes
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Brave Nightly - Download repository GPG keyring
+      get_url:
+        url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser-nightly-archive-keyring.gpg
+        dest: /usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg
+        mode: '0644'
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Brave Nightly - Add APT repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg] https://brave-browser-apt-nightly.s3.brave.com/ nightlies main"
+        filename: brave-browser-nightly
+        state: present
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Brave Nightly - Install package
+      apt:
+        name: brave-browser-nightly
+        state: present
+        update_cache: yes
+      when: ansible_hostname == "zatestvmtest01"
+
+# ==============================================================================
+# Boot Loader Optimizations
+# Set boot target to GUI, grub timeout
+# ==============================================================================
     - name: Desktop Specific - Set default boot target to Graphical UI
       file:
         src: /lib/systemd/system/graphical.target
@@ -38,11 +80,13 @@
         line: 'GRUB_TIMEOUT=1'
         backup: yes
       notify: Update GRUB
+      when: ansible_hostname == "zatestvmtest01"
 
     - name: Identity - Create a customized motd
       copy:
         content: "Welcome to {{ ansible_hostname }}. Managed by Ansible Pull.\n"
         dest: /etc/motd
+      when: ansible_hostname == "zatestvmtest01"
 
   handlers:
     - name: Update GRUB
