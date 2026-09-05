@@ -83,6 +83,13 @@
 # ==============================================================================
 # Desktop Customizations: KDE Plasma 6 Look & Feel Configuration
 # ==============================================================================
+    - name: Common - Install Qt dependencies for KDE tools
+      apt:
+        name:
+          - libxcb-cursor0
+        state: present
+      when: ansible_hostname == "zatestvmtest01"
+    
     - name: KDE Customization - Ensure user local directories exist
       file:
         path: "{{ item }}"
@@ -150,11 +157,11 @@
         mode: '0755'
         content: |
           #!/bin/bash
-          # Apply Base Global Theme & Color Scheme
-          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null || lookandfeeltool -a org.kde.breezedark.desktop
-          plasma-apply-colorscheme BreezeDark
+          export QT_QPA_PLATFORM=offscreen
 
-          # Global Color Overrides
+          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null || lookandfeeltool -a org.kde.breezedark.desktop 2>/dev/null
+          plasma-apply-colorscheme BreezeDark 2>/dev/null
+
           kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
           kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
           kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
@@ -162,7 +169,6 @@
           kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
           kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
 
-          # KFileDialog & Performance Settings
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
@@ -170,12 +176,10 @@
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
 
-          # Window Management (KWin)
           kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
           kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
           kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
-          # Dolphin Panel Configuration
           killall dolphin 2>/dev/null
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
@@ -186,26 +190,36 @@
           kwriteconfig6 --file dolphinrc --group "General" --key "LockPanels" false 
           kwriteconfig6 --file dolphinrc --group "KFileDialog Settings" --key "Places Icons Static Size" 22
 
-          # Disable Launch Feedback
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
 
-          # Enable Numlock
           kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 0
-
-          # Konsole Default Profile
           kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
       when: ansible_hostname == "zatestvmtest01"
 
-    - name: KDE Customization - Execute theme script as ratel user
+    - name: KDE Customization - Execute theme script offscreen as ratel user
       command: /home/ratel/.local/bin/apply-kde-theme.sh
       become: true
       become_user: ratel
       environment:
         HOME: /home/ratel
         USER: ratel
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: KDE Customization - Add GUI Autostart entry for runtime reload
+      copy:
+        dest: /home/ratel/.config/autostart/apply-kde-theme.desktop
+        owner: ratel
+        group: ratel
+        mode: '0644'
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Apply KDE Theme
+          Exec=/home/ratel/.local/bin/apply-kde-theme.sh
+          X-KDE-autostart-after=panel
       when: ansible_hostname == "zatestvmtest01"
 
 # ==============================================================================
