@@ -81,6 +81,131 @@
       when: ansible_hostname == "zatestvmtest01"
 
 # ==============================================================================
+# Desktop Customizations: KDE Plasma 6 Look & Feel Configuration
+# ==============================================================================
+    - name: KDE Customization - Ensure Konsole config directory exists
+      file:
+        path: /home/ratel/.local/share/konsole
+        state: directory
+        owner: ratel
+        group: ratel
+        mode: '0755'
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: KDE Customization - Create Dracula Konsole color scheme
+      copy:
+        dest: /home/ratel/.local/share/konsole/Dracula.colorscheme
+        owner: ratel
+        group: ratel
+        mode: '0644'
+        content: |
+          [Background]
+          Color=40,42,54
+          [Foreground]
+          Color=248,248,242
+          [General]
+          Description=Dracula
+          Opacity=0.85
+          [Color0]
+          Color=189,147,249
+          [Color1]
+          Color=255,85,85
+          [Color2]
+          Color=80,250,123
+          [Color3]
+          Color=255,121,198
+          [Color4]
+          Color=139,233,253
+          [Color5]
+          Color=241,250,140
+          [Color6]
+          Color=98,114,164
+          [Color7]
+          Color=68,71,90
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: KDE Customization - Create Ratel Konsole profile
+      copy:
+        dest: /home/ratel/.local/share/konsole/Ratel.profile
+        owner: ratel
+        group: ratel
+        mode: '0644'
+        content: |
+          [Appearance]
+          ColorScheme=Dracula
+
+          [General]
+          Name=Ratel
+          Parent=FALLBACK/
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: KDE Customization - Deploy master desktop configuration script
+      copy:
+        dest: /home/ratel/.local/bin/apply-kde-theme.sh
+        owner: ratel
+        group: ratel
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Apply Base Global Theme & Color Scheme
+          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null || lookandfeeltool -a org.kde.breezedark.desktop
+          plasma-apply-colorscheme BreezeDark
+
+          # Global Color Overrides
+          kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
+          kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
+          kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
+          kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "ForegroundNormal" "252,252,252"
+          kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
+          kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
+
+          # KFileDialog & Performance Settings
+          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
+          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
+          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
+          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Speedbar Width" 138
+          kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
+          kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
+
+          # Window Management (KWin)
+          kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
+          kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
+          kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
+
+          # Dolphin Panel Configuration
+          killall dolphin 2>/dev/null
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "PlacesPanelVisible" true
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "FoldersPanelVisible" true
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "State" ""
+          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InhibitStackedPanels" true
+          kwriteconfig6 --file dolphinrc --group "General" --key "LockPanels" false 
+          kwriteconfig6 --file dolphinrc --group "KFileDialog Settings" --key "Places Icons Static Size" 22
+
+          # Disable Launch Feedback
+          kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
+          kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
+          kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
+          kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
+
+          # Enable Numlock
+          kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 0
+
+          # Konsole Default Profile
+          kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: KDE Customization - Execute theme script as ratel user
+      command: /home/ratel/.local/bin/apply-kde-theme.sh
+      become: true
+      become_user: ratel
+      environment:
+        HOME: /home/ratel
+        USER: ratel
+      when: ansible_hostname == "zatestvmtest01"
+
+# ==============================================================================
 # Boot Loader Optimizations
 # Set boot target to GUI, grub timeout
 # ==============================================================================
