@@ -159,9 +159,11 @@
           #!/bin/bash
           export QT_QPA_PLATFORM=offscreen
 
+          # Apply Base Global Theme & Color Palette
           plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null
           plasma-apply-colorscheme BreezeDark 2>/dev/null
 
+          # Global Dark Palette Overrides (kdeglobals)
           kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
           kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
           kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
@@ -169,6 +171,7 @@
           kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
           kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
 
+          # File Dialog & Preview Performance
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
@@ -177,10 +180,13 @@
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
 
+          # Window Manager & Display (kwinrc)
           kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
           kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
           kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
+          # Dolphin View Mode & Panel Layout (dolphinrc)
+          kwriteconfig6 --file dolphinrc --group "ViewsMode" --key "ViewMode" 1
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "PlacesPanelVisible" true
@@ -188,12 +194,16 @@
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "State" ""
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InhibitStackedPanels" true
 
+          # Disable Cursor / Launch Animations
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
 
+          # Hardware Input (1 = NumLock ON on boot)
           kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
+
+          # Default Konsole Profile
           kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
       when: ansible_hostname == "zatestvmtest01"
 
