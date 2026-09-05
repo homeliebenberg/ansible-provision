@@ -27,10 +27,11 @@
     - name: Desktop Specific Tasks
       when: ansible_hostname == "zatestvmtest01"
       block:
-        - name: Desktop Specific - Install KDE Plasma Desktop & SDDM
+        - name: Desktop Specific - Install KDE Plasma Desktop, SDDM & System Monitor
           apt:
             name:
               - kde-plasma-desktop
+              - plasma-systemmonitor
               - sddm
               - libxcb-cursor0
               - apt-transport-https
@@ -70,6 +71,50 @@
             state: present
             update_cache: yes
 
+        # --- /etc/skel Pre-seeding for New Users ---
+        - name: Desktop Specific - Ensure /etc/skel/.config directory exists
+          file:
+            path: /etc/skel/.config
+            state: directory
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: Desktop Specific - Pre-seed plasma-org.kde.plasma.desktop-appletsrc in /etc/skel
+          copy:
+            dest: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+            owner: root
+            group: root
+            mode: '0644'
+            content: |
+              [Containments][2]
+              activityId=
+              formfactor=2
+              immutability=1
+              lastScreen=0
+              location=4
+              plugin=org.kde.panel
+              wallpaperplugin=org.kde.image
+
+              [Containments][2][Applets][3]
+              immutability=1
+              plugin=org.kde.plasma.kickoff
+
+              [Containments][2][Applets][3][Configuration][General]
+              favorites=applications:org.kde.plasma-systemmonitor.desktop,applications:systemsettings.desktop,applications:org.kde.discover.desktop,applications:org.kde.dolphin.desktop,applications:com.brave.Browser.nightly.desktop
+              favoritesPortedToKAstats=false
+              systemFavorites=suspend,hibernate,reboot,shutdown
+
+              [Containments][2][Applets][5]
+              immutability=1
+              plugin=org.kde.plasma.icontasks
+
+              [Containments][2][Applets][5][Configuration][General]
+              launchers=applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop
+
+              [Containments][2][General]
+              AppletOrder=3;4;5;6;7;19;20
+
         # --- KDE Plasma 6 Customizations ---
         - name: KDE Customization - Ensure user directories exist
           file:
@@ -79,10 +124,20 @@
             group: ratel
             mode: '0755'
           loop:
+            - /home/ratel/.config
             - /home/ratel/.local/bin
             - /home/ratel/.local/share/konsole
             - /home/ratel/.local/state
             - /home/ratel/.local/share/dolphin/view_properties/global
+
+        - name: Desktop Specific - Seed desktop appletsrc directly to ratel home
+          copy:
+            src: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+            dest: /home/ratel/.config/plasma-org.kde.plasma.desktop-appletsrc
+            owner: ratel
+            group: ratel
+            mode: '0644'
+            remote_src: true
 
         - name: KDE Customization - Create Dracula Konsole color scheme
           copy:
@@ -139,11 +194,17 @@
               #!/bin/bash
               export QT_QPA_PLATFORM=offscreen
 
-              # 1. Global Plasma Theme & Colour Palette
+              # 1. Stop processes to release locks on config files and databases
+              killall -9 plasmashell kactivitymanagerd 2>/dev/null
+
+              # 2. Clear KActivity Stats database cache
+              rm -rf "$HOME/.local/share/kactivitymanagerd/resources/"*
+
+              # 3. Global Plasma Theme & Colour Palette
               plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null
               plasma-apply-colorscheme BreezeDark 2>/dev/null
 
-              # 2. Kdeglobals Custom Dark Palette
+              # 4. Kdeglobals Custom Dark Palette
               kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
               kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
               kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
@@ -151,7 +212,7 @@
               kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
               kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
 
-              # 3. File Dialog & Previews (kdeglobals)
+              # 5. File Dialog & Previews (kdeglobals)
               kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
               kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
               kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
@@ -160,12 +221,12 @@
               kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
               kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
 
-              # 4. KWin & Display (kwinrc)
+              # 6. KWin & Display (kwinrc)
               kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
               kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
               kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
-              # 5. Dolphin Plasma 6 Configuration
+              # 7. Dolphin Plasma 6 Configuration
               killall -9 dolphin 2>/dev/null
 
               cat << 'EOF' > /home/ratel/.local/share/dolphin/view_properties/global/.directory
@@ -176,7 +237,7 @@
               cat << 'EOF' > /home/ratel/.local/state/dolphinstaterc
               [State]
               1280x800 screen: Window-Maximized=true
-              State=AAAA/wAAAAD9AAAAAwAAAAAAAAEAAAACivwCAAAAAvsAAAAUAHAAbABhAGMAZQBzAEQAbwBjAGsBAAAATgAAAQgAAABxAP////sAAAAWAGYAbwBsAGQAZQByAHMARABvAGMAawEAAAFXAAABgQAAAHEA////AAAAAQAAALQAAAKK/AIAAAAB+wAAABAAaQBuAGYAbwBEAG8AYwBrAAAAAE4AAAKKAAABIgD///8AAAADAAAFAAAAALT8AQAAAAH7AAAAGAB0AGUAcgBtAGkAbgBhAGwARABvAGMAawAAAAAAAAAFAAAAAEAA////AAAD/wAAAooAAAAEAAAABAAAAAgAAAAI/AAAAAEAAAACAAAAAQAAABYAbQBhAGkAbgBUAG8AbwBsAEIAYQByAQAAAAD/////AAAAAAAAAAA=
+              State=AAAA/wAAAAD9AAAAAwAAAAAAAAEAAAACivwCAAAAAvsAAAAUAHAAbABhAGMAZQBzAEQAbwBjAGsBAAAATgAAAQgAAABxAP////sAAAAWAGYAbwBsAGQAZQBrAHMARABvAGMAawEAAAFXAAABgQAAAHEA////AAAAAQAAALQAAAKK/AIAAAAB+wAAABAAaQBuAGYAbwBEAG8AYwBrAAAAAE4AAAKKAAABIgD///8AAAADAAAFAAAAALT8AQAAAAH7AAAAGAB0AGUAcgBtAGkAbgBhAGwARABvAGMAawAAAAAAAAAFAAAAAEAA////AAAD/wAAAooAAAAEAAAABAAAAAgAAAAI/AAAAAEAAAACAAAAAQAAABYAbQBhAGkAbgBUAG8AbwBsAEIAYQByAQAAAAD/////AAAAAAAAAAA=
               EOF
 
               cat << 'EOF' > /home/ratel/.config/dolphinrc
@@ -192,7 +253,7 @@
                                    /home/ratel/.local/share/dolphin/ \
                                    /home/ratel/.config/dolphinrc
 
-              # 6. UI Feedback & Launch Animations
+              # 8. UI Feedback & Launch Animations
               kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "BusyCursor" false
               kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
               kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
@@ -203,73 +264,39 @@
               kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
               kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Timeout" 0
 
-              # 7. Plasma Taskbar Pinned Icons & Start Menu Favorites ---
-              APPLETSRC="/home/ratel/.config/plasma-org.kde.plasma.desktop-appletsrc"
-              if [ -f "$APPLETSRC" ]; then
-                  # Stop plasmashell so memory state isn't written back to disk
-                  killall -9 plasmashell 2>/dev/null
-                  # 1. Update Taskbar Pinned Launchers (Containment 2 -> Applet 5)
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "5" --group "Configuration" --group "General" \
-                                --key "launchers" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
-                  # 2. Update Kickoff Start Menu Favorites (Containment 2 -> Applet 3)
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
-                                --key "favorites" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
-                                --key "systemFavorites" "suspend,hibernate,reboot,shutdown"
-                  # 3. Clean up any orphan keys in top-level Applets sections
-                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "3" --group "Configuration" --group "General" --key "favorites" --delete 2>/dev/null
-                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "5" --group "Configuration" --group "General" --key "launchers" --delete 2>/dev/null
-                  # 4. Rebuild service index cache
-                  kbuildsycoca6 --noincremental 2>/dev/null
-              fi
-
-              # 8. Plasma Kickoff Favorites Icons
-              export QT_QPA_PLATFORM=offscreen
-
-              # Stop processes to release locks on config files and databases
-              killall -9 plasmashell kactivitymanagerd 2>/dev/null
+              # 9. Taskbar Icons & Kickoff Start Menu Favorites
               APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
 
-              # Clear KActivity Stats database cache
-              rm -rf "$HOME/.local/share/kactivitymanagerd/resources/"*
-              if [ -f "$APPLETSRC" ]; then
+              # Configure Taskbar Pinned Icons (System Settings -> Brave -> Dolphin -> Konsole)
+              kwriteconfig6 --file "$APPLETSRC" \
+                            --group "Containments" --group "2" --group "Applets" --group "5" --group "Configuration" --group "General" \
+                            --key "launchers" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
 
-                  # Configure Taskbar Pinned Icons (System Settings -> Brave -> Dolphin -> Konsole)
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "5" --group "Configuration" --group "General" \
-                                --key "launchers" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
+              # Configure Kickoff Start Menu Favorites (System Monitor -> System Settings -> Discover -> Dolphin -> Brave)
+              kwriteconfig6 --file "$APPLETSRC" \
+                            --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                            --key "favorites" "applications:org.kde.plasma-systemmonitor.desktop,applications:systemsettings.desktop,applications:org.kde.discover.desktop,applications:org.kde.dolphin.desktop,applications:com.brave.Browser.nightly.desktop"
 
-                  # Configure Kickoff Start Menu Favorites (System Monitor -> System Settings -> Discover -> Dolphin -> Brave)
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
-                                --key "favorites" "applications:org.kde.plasma-systemmonitor.desktop,applications:systemsettings.desktop,applications:org.kde.discover.desktop,applications:org.kde.dolphin.desktop,applications:com.brave.Browser.nightly.desktop"
+              # Disable KAstats porting flag so Kickoff reads directly from appletsrc
+              kwriteconfig6 --file "$APPLETSRC" \
+                            --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                            --key "favoritesPortedToKAstats" "false"
 
-                  # Disable KAstats porting flag so Kickoff reads directly from appletsrc
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
-                                --key "favoritesPortedToKAstats" "false"
+              # Restrict system favorites to power actions
+              kwriteconfig6 --file "$APPLETSRC" \
+                            --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                            --key "systemFavorites" "suspend,hibernate,reboot,shutdown"
 
-                  # Restrict system favorites to power actions
-                  kwriteconfig6 --file "$APPLETSRC" \
-                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
-                                --key "systemFavorites" "suspend,hibernate,reboot,shutdown"
+              # Clean up orphan top-level Applets keys
+              kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "3" --group "Configuration" --group "General" --key "favorites" --delete 2>/dev/null
+              kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "5" --group "Configuration" --group "General" --key "launchers" --delete 2>/dev/null
 
-                  # Clean up orphan top-level Applets keys
-                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "3" --group "Configuration" --group "General" --key "favorites" --delete 2>/dev/null
-                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "5" --group "Configuration" --group "General" --key "launchers" --delete 2>/dev/null
-
-                  # Rebuild service index cache
-                  kbuildsycoca6 --noincremental 2>/dev/null
-              fi
-
-              # 8. Keyboard (NumLock ON)
+              # 10. Keyboard & Konsole Defaults
               kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
-
-              # 9. Konsole Default Profile
               kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
+
+              # 11. Rebuild service index cache
+              kbuildsycoca6 --noincremental 2>/dev/null
 
         - name: KDE Customization - Execute theme script offscreen as ratel user
           command: /home/ratel/.local/bin/apply-kde-theme.sh
