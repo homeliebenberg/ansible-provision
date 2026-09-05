@@ -49,27 +49,33 @@
           - curl
           - gnupg
         state: present
+      when: ansible_hostname == "zatestvmtest01"
 
     - name: Brave Nightly - Download repository GPG keyring
       get_url:
         url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser-nightly-archive-keyring.gpg
         dest: /usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg
         mode: '0644'
-        force: yes
       when: ansible_hostname == "zatestvmtest01"
 
-    - name: Brave Nightly - Add APT repository
-      apt_repository:
-        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg] https://brave-browser-apt-nightly.s3.brave.com/ nightly main"
-        filename: brave-browser-nightly
-        state: present
-        update_cache: yes
+    - name: Brave Nightly - Download DEB822 repository definition
+      get_url:
+        url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser.sources
+        dest: /etc/apt/sources.list.d/brave-browser-nightly.sources
+        mode: '0644'
+      when: ansible_hostname == "zatestvmtest01"
+
+    - name: Brave Nightly - Remove legacy list file if present
+      file:
+        path: /etc/apt/sources.list.d/brave-browser-nightly.list
+        state: absent
       when: ansible_hostname == "zatestvmtest01"
 
     - name: Brave Nightly - Install package
       apt:
         name: brave-browser-nightly
         state: present
+        update_cache: yes
       when: ansible_hostname == "zatestvmtest01"
 
 # ==============================================================================
