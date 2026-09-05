@@ -7,271 +7,235 @@
     ansible_python_interpreter: /usr/bin/python3
 
   tasks:
-# ==============================================================================
-# Common applications
-# Install htop, fastfetch, tree, vim and qemu guest
-# ==============================================================================
-    - name: Common - Install basic tools
+    # ==========================================================================
+    # Common Applications
+    # ==========================================================================
+    - name: Common - Install basic system utilities & guest agent
       apt:
-        name: [htop, fastfetch, tree, vim]
+        name:
+          - htop
+          - fastfetch
+          - tree
+          - vim
+          - qemu-guest-agent
         state: present
         update_cache: yes
 
-    - name: Common - Install QEMU Guest Agent
-      apt:
-        name: qemu-guest-agent
-        state: present
-
-# ==============================================================================
-# Desktop Customizations
-# Install KDE Plasma, Brave, Remove Firefox
-# ==============================================================================
-    - name: Desktop Specific - Install KDE Plasma Desktop
-      apt:
-        name:
-          - kde-plasma-desktop
-          - sddm
-        state: present
+    # ==========================================================================
+    # Desktop Customizations (zatestvmtest01)
+    # ==========================================================================
+    - name: Desktop Specific Tasks
       when: ansible_hostname == "zatestvmtest01"
+      block:
+        - name: Desktop Specific - Install KDE Plasma Desktop & SDDM
+          apt:
+            name:
+              - kde-plasma-desktop
+              - sddm
+              - libxcb-cursor0
+              - apt-transport-https
+              - curl
+              - gnupg
+            state: present
 
-    - name: Desktop Specific - Remove Firefox ESR
-      apt:
-        name:
-          - firefox-esr
-          - firefox-esr-l10n-*
-        state: absent
-        purge: yes
-      when: ansible_hostname == "zatestvmtest01"
+        - name: Desktop Specific - Purge Firefox ESR
+          apt:
+            name:
+              - firefox-esr
+              - "firefox-esr-l10n-*"
+            state: absent
+            purge: yes
 
-# --- Brave Nightly Installation
-    - name: Brave Nightly - Install repository prerequisites
-      apt:
-        name:
-          - apt-transport-https
-          - curl
-          - gnupg
-        state: present
-      when: ansible_hostname == "zatestvmtest01"
+        # --- Brave Nightly Installation ---
+        - name: Brave Nightly - Download repository GPG keyring
+          get_url:
+            url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser-nightly-archive-keyring.gpg
+            dest: /usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg
+            mode: '0644'
 
-    - name: Brave Nightly - Download repository GPG keyring
-      get_url:
-        url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser-nightly-archive-keyring.gpg
-        dest: /usr/share/keyrings/brave-browser-nightly-archive-keyring.gpg
-        mode: '0644'
-      when: ansible_hostname == "zatestvmtest01"
+        - name: Brave Nightly - Download DEB822 repository definition
+          get_url:
+            url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser.sources
+            dest: /etc/apt/sources.list.d/brave-browser-nightly.sources
+            mode: '0644'
 
-    - name: Brave Nightly - Download DEB822 repository definition
-      get_url:
-        url: https://brave-browser-apt-nightly.s3.brave.com/brave-browser.sources
-        dest: /etc/apt/sources.list.d/brave-browser-nightly.sources
-        mode: '0644'
-      when: ansible_hostname == "zatestvmtest01"
+        - name: Brave Nightly - Remove legacy list file if present
+          file:
+            path: /etc/apt/sources.list.d/brave-browser-nightly.list
+            state: absent
 
-    - name: Brave Nightly - Remove legacy list file if present
-      file:
-        path: /etc/apt/sources.list.d/brave-browser-nightly.list
-        state: absent
-      when: ansible_hostname == "zatestvmtest01"
+        - name: Brave Nightly - Install package
+          apt:
+            name: brave-browser-nightly
+            state: present
+            update_cache: yes
 
-    - name: Brave Nightly - Install package
-      apt:
-        name: brave-browser-nightly
-        state: present
-        update_cache: yes
-      when: ansible_hostname == "zatestvmtest01"
+        # --- KDE Plasma 6 Customizations ---
+        - name: KDE Customization - Ensure user directories exist
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: ratel
+            group: ratel
+            mode: '0755'
+          loop:
+            - /home/ratel/.local/bin
+            - /home/ratel/.local/share/konsole
+            - /home/ratel/.local/state
+            - /home/ratel/.local/share/dolphin/view_properties/global
 
-# ==============================================================================
-# Desktop Customizations: KDE Plasma 6 Look & Feel Configuration
-# ==============================================================================
-    - name: Common - Install Qt dependencies for KDE tools
-      apt:
-        name:
-          - libxcb-cursor0
-        state: present
-      when: ansible_hostname == "zatestvmtest01"
-    
-    - name: KDE Customization - Ensure user local directories exist
-      file:
-        path: "{{ item }}"
-        state: directory
-        owner: ratel
-        group: ratel
-        mode: '0755'
-      loop:
-        - /home/ratel/.local/bin
-        - /home/ratel/.local/share/konsole
-      when: ansible_hostname == "zatestvmtest01"
+        - name: KDE Customization - Create Dracula Konsole color scheme
+          copy:
+            dest: /home/ratel/.local/share/konsole/Dracula.colorscheme
+            owner: ratel
+            group: ratel
+            mode: '0644'
+            content: |
+              [Background]
+              Color=40,42,54
+              [Foreground]
+              Color=248,248,242
+              [General]
+              Description=Dracula
+              Opacity=0.85
+              [Color0]
+              Color=189,147,249
+              [Color1]
+              Color=255,85,85
+              [Color2]
+              Color=80,250,123
+              [Color3]
+              Color=255,121,198
+              [Color4]
+              Color=139,233,253
+              [Color5]
+              Color=241,250,140
+              [Color6]
+              Color=98,114,164
+              [Color7]
+              Color=68,71,90
 
-    - name: KDE Customization - Create Dracula Konsole color scheme
-      copy:
-        dest: /home/ratel/.local/share/konsole/Dracula.colorscheme
-        owner: ratel
-        group: ratel
-        mode: '0644'
-        content: |
-          [Background]
-          Color=40,42,54
-          [Foreground]
-          Color=248,248,242
-          [General]
-          Description=Dracula
-          Opacity=0.85
-          [Color0]
-          Color=189,147,249
-          [Color1]
-          Color=255,85,85
-          [Color2]
-          Color=80,250,123
-          [Color3]
-          Color=255,121,198
-          [Color4]
-          Color=139,233,253
-          [Color5]
-          Color=241,250,140
-          [Color6]
-          Color=98,114,164
-          [Color7]
-          Color=68,71,90
-      when: ansible_hostname == "zatestvmtest01"
+        - name: KDE Customization - Create Ratel Konsole profile
+          copy:
+            dest: /home/ratel/.local/share/konsole/Ratel.profile
+            owner: ratel
+            group: ratel
+            mode: '0644'
+            content: |
+              [Appearance]
+              ColorScheme=Dracula
 
-    - name: KDE Customization - Create Ratel Konsole profile
-      copy:
-        dest: /home/ratel/.local/share/konsole/Ratel.profile
-        owner: ratel
-        group: ratel
-        mode: '0644'
-        content: |
-          [Appearance]
-          ColorScheme=Dracula
+              [General]
+              Name=Ratel
+              Parent=FALLBACK/
 
-          [General]
-          Name=Ratel
-          Parent=FALLBACK/
-      when: ansible_hostname == "zatestvmtest01"
+        - name: KDE Customization - Deploy desktop theme script
+          copy:
+            dest: /home/ratel/.local/bin/apply-kde-theme.sh
+            owner: ratel
+            group: ratel
+            mode: '0755'
+            content: |
+              #!/bin/bash
+              export QT_QPA_PLATFORM=offscreen
 
-    - name: KDE Customization - Deploy master desktop configuration script
-      copy:
-        dest: /home/ratel/.local/bin/apply-kde-theme.sh
-        owner: ratel
-        group: ratel
-        mode: '0755'
-        content: |
-          #!/bin/bash
-          export QT_QPA_PLATFORM=offscreen
+              # 1. Global Plasma Theme & Colour Palette
+              plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null
+              plasma-apply-colorscheme BreezeDark 2>/dev/null
 
-          # Apply Base Global Theme & Color Palette
-          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null
-          plasma-apply-colorscheme BreezeDark 2>/dev/null
+              # 2. Kdeglobals Custom Dark Palette
+              kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
+              kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
+              kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
+              kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "ForegroundNormal" "252,252,252"
+              kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
+              kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
 
-          # Global Dark Palette Overrides (kdeglobals)
-          kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
-          kwriteconfig6 --file kdeglobals --group "Colors:View" --key "ForegroundNormal" "252,252,252"
-          kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "BackgroundNormal" "32,35,38"
-          kwriteconfig6 --file kdeglobals --group "Colors:Window" --key "ForegroundNormal" "252,252,252"
-          kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "BackgroundNormal" "61,174,233"
-          kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key "ForegroundNormal" "252,252,252"
+              # 3. File Dialog & Previews (kdeglobals)
+              kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
+              kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
+              kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
+              kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Speedbar Width" 138
+              kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Places Icons Static Size" 22
+              kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
+              kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
 
-          # File Dialog & Preview Performance
-          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show hidden files" true
-          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
-          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
-          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Speedbar Width" 138
-          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Places Icons Static Size" 22
-          kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
-          kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
+              # 4. KWin & Display (kwinrc)
+              kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
+              kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
+              kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
-          # Window Manager & Display (kwinrc)
-          kwriteconfig6 --file kwinrc --group "Tiling" --key "padding" 4
-          kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
-          kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
+              # 5. Dolphin Plasma 6 Configuration
+              killall -9 dolphin 2>/dev/null
 
-          # --- DOLPHIN VIEW MODE & PANEL CONFIGURATION ---
-          killall dolphin 2>/dev/null
-          rm -rf /home/ratel/.local/share/dolphin/view_properties/
+              cat << 'EOF' > /home/ratel/.local/share/dolphin/view_properties/global/.directory
+              [Dolphin]
+              ViewMode=1
+              EOF
 
-          kwriteconfig6 --file dolphinrc --group "ViewsMode" --key "ViewMode" 1
-          kwriteconfig6 --file dolphinrc --group "Dolphin" --key "ViewMode" 1
-          kwriteconfig6 --file dolphinrc --group "General" --key "RememberViewFeaturesPerFolder" false
-          
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
-          kwriteconfig6 --file dolphinrc --group "Dolphin" --key "HeaderBarConsolePanelVisible" false
-          
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "PlacesPanelVisible" true
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "FoldersPanelVisible" true
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "State" ""
-          kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InhibitStackedPanels" true
+              cat << 'EOF' > /home/ratel/.local/state/dolphinstaterc
+              [State]
+              1280x800 screen: Window-Maximized=true
+              State=AAAA/wAAAAD9AAAAAwAAAAAAAAEAAAACivwCAAAAAvsAAAAUAHAAbABhAGMAZQBzAEQAbwBjAGsBAAAATgAAAQgAAABxAP////sAAAAWAGYAbwBsAGQAZQByAHMARABvAGMAawEAAAFXAAABgQAAAHEA////AAAAAQAAALQAAAKK/AIAAAAB+wAAABAAaQBuAGYAbwBEAG8AYwBrAAAAAE4AAAKKAAABIgD///8AAAADAAAFAAAAALT8AQAAAAH7AAAAGAB0AGUAcgBtAGkAbgBhAGwARABvAGMAawAAAAAAAAAFAAAAAEAA////AAAD/wAAAooAAAAEAAAABAAAAAgAAAAI/AAAAAEAAAACAAAAAQAAABYAbQBhAGkAbgBUAG8AbwBsAEIAYQByAQAAAAD/////AAAAAAAAAAA=
+              EOF
 
-          # Disable Cursor / Launch Animations
-          kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
-          kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
-          kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
-          kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
+              cat << 'EOF' > /home/ratel/.config/dolphinrc
+              [General]
+              RememberViewFeaturesPerFolder=false
+              Version=200
 
-          # Hardware Input (1 = NumLock ON on boot)
-          kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
+              [KFileDialog Settings]
+              Places Icons Static Size=22
+              EOF
 
-          # Default Konsole Profile
-          kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
-      when: ansible_hostname == "zatestvmtest01"
+              chown -R ratel:ratel /home/ratel/.local/state/dolphinstaterc \
+                                   /home/ratel/.local/share/dolphin/ \
+                                   /home/ratel/.config/dolphinrc
 
-    - name: KDE Customization - Execute theme script offscreen as ratel user
-      command: /home/ratel/.local/bin/apply-kde-theme.sh
-      become: true
-      become_user: ratel
-      environment:
-        HOME: /home/ratel
-        USER: ratel
-      when: ansible_hostname == "zatestvmtest01"
+              # 6. UI Feedback & Launch Animations
+              kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "BusyCursor" false
+              kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
+              kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
 
-    - name: KDE Customization - Ensure Autostart directory exists
-      file:
-        path: /home/ratel/.config/autostart
-        state: directory
-        owner: ratel
-        group: ratel
-        mode: '0755'
-      when: ansible_hostname == "zatestvmtest01"
-      
-    - name: KDE Customization - Add GUI Autostart entry for runtime reload
-      copy:
-        dest: /home/ratel/.config/autostart/apply-kde-theme.desktop
-        owner: ratel
-        group: ratel
-        mode: '0644'
-        content: |
-          [Desktop Entry]
-          Type=Application
-          Name=Apply KDE Theme
-          Exec=/home/ratel/.local/bin/apply-kde-theme.sh
-          X-KDE-autostart-after=panel
-      when: ansible_hostname == "zatestvmtest01"
+              kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
+              kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Bouncing" false
+              kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "BusyCursor" false
+              kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
+              kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Timeout" 0
 
-# ==============================================================================
-# Boot Loader Optimizations
-# Set boot target to GUI, grub timeout
-# ==============================================================================
-    - name: Desktop Specific - Set default boot target to Graphical UI
-      file:
-        src: /lib/systemd/system/graphical.target
-        dest: /etc/systemd/system/default.target
-        state: link
-      when: ansible_hostname == "zatestvmtest01"
+              # 7. Keyboard (NumLock ON)
+              kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
 
-    - name: GRUB - Set GRUB_TIMEOUT to 1 second
-      lineinfile:
-        path: /etc/default/grub
-        regexp: '^GRUB_TIMEOUT='
-        line: 'GRUB_TIMEOUT=1'
-        backup: yes
-      notify: Update GRUB
-      when: ansible_hostname == "zatestvmtest01"
+              # 8. Konsole Default Profile
+              kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
 
-    - name: Identity - Create a customized motd
-      copy:
-        content: "Welcome to {{ ansible_hostname }}. Managed by Ansible Pull.\n"
-        dest: /etc/motd
-      when: ansible_hostname == "zatestvmtest01"
+        - name: KDE Customization - Execute theme script offscreen as ratel user
+          command: /home/ratel/.local/bin/apply-kde-theme.sh
+          become: yes
+          become_user: ratel
+          environment:
+            HOME: /home/ratel
+            USER: ratel
+
+        # --- Boot & System Targets ---
+        - name: Desktop Specific - Set default boot target to Graphical UI
+          file:
+            src: /lib/systemd/system/graphical.target
+            dest: /etc/systemd/system/default.target
+            state: link
+
+        - name: GRUB - Set GRUB_TIMEOUT to 1 second
+          lineinfile:
+            path: /etc/default/grub
+            regexp: '^GRUB_TIMEOUT='
+            line: 'GRUB_TIMEOUT=1'
+            backup: yes
+          notify: Update GRUB
+
+        - name: Identity - Create a customized motd
+          copy:
+            content: "Welcome to {{ ansible_hostname }}. Managed by Ansible Pull.\n"
+            dest: /etc/motd
 
   handlers:
     - name: Update GRUB
