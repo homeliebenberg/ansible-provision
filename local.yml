@@ -83,13 +83,16 @@
 # ==============================================================================
 # Desktop Customizations: KDE Plasma 6 Look & Feel Configuration
 # ==============================================================================
-    - name: KDE Customization - Ensure Konsole config directory exists
+    - name: KDE Customization - Ensure user local directories exist
       file:
-        path: /home/ratel/.local/share/konsole
+        path: "{{ item }}"
         state: directory
         owner: ratel
         group: ratel
         mode: '0755'
+      loop:
+        - /home/ratel/.local/bin
+        - /home/ratel/.local/share/konsole
       when: ansible_hostname == "zatestvmtest01"
 
     - name: KDE Customization - Create Dracula Konsole color scheme
