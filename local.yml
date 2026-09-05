@@ -225,7 +225,7 @@
         mode: '0755'
       when: ansible_hostname == "zatestvmtest01"
       
-      - name: KDE Customization - Add GUI Autostart entry for runtime reload
+    - name: KDE Customization - Add GUI Autostart entry for runtime reload
       copy:
         dest: /home/ratel/.config/autostart/apply-kde-theme.desktop
         owner: ratel
