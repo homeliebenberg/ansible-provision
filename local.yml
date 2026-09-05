@@ -216,7 +216,16 @@
         USER: ratel
       when: ansible_hostname == "zatestvmtest01"
 
-    - name: KDE Customization - Add GUI Autostart entry for runtime reload
+    - name: KDE Customization - Ensure Autostart directory exists
+      file:
+        path: /home/ratel/.config/autostart
+        state: directory
+        owner: ratel
+        group: ratel
+        mode: '0755'
+      when: ansible_hostname == "zatestvmtest01"
+      
+      - name: KDE Customization - Add GUI Autostart entry for runtime reload
       copy:
         dest: /home/ratel/.config/autostart/apply-kde-theme.desktop
         owner: ratel
