@@ -185,10 +185,18 @@
           kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
           kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
-          # Dolphin View Mode & Panel Layout (dolphinrc)
+          # --- DOLPHIN VIEW MODE & PANEL CONFIGURATION ---
+          killall dolphin 2>/dev/null
+          rm -rf /home/ratel/.local/share/dolphin/view_properties/
+
           kwriteconfig6 --file dolphinrc --group "ViewsMode" --key "ViewMode" 1
+          kwriteconfig6 --file dolphinrc --group "Dolphin" --key "ViewMode" 1
+          kwriteconfig6 --file dolphinrc --group "General" --key "RememberViewFeaturesPerFolder" false
+          
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
+          kwriteconfig6 --file dolphinrc --group "Dolphin" --key "HeaderBarConsolePanelVisible" false
+          
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "PlacesPanelVisible" true
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "FoldersPanelVisible" true
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "State" ""
