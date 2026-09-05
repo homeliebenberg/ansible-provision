@@ -159,7 +159,7 @@
           #!/bin/bash
           export QT_QPA_PLATFORM=offscreen
 
-          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null || lookandfeeltool -a org.kde.breezedark.desktop 2>/dev/null
+          plasma-apply-lookandfeel -a org.kde.breezedark.desktop 2>/dev/null
           plasma-apply-colorscheme BreezeDark 2>/dev/null
 
           kwriteconfig6 --file kdeglobals --group "Colors:View" --key "BackgroundNormal" "20,22,24"
@@ -173,6 +173,7 @@
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Breadcrumb Navigation" false
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Show Inline Previews" true
           kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Speedbar Width" 138
+          kwriteconfig6 --file kdeglobals --group "KFileDialog Settings" --key "Places Icons Static Size" 22
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "MaximumRemoteSize" 0
           kwriteconfig6 --file kdeglobals --group "PreviewSettings" --key "EnableRemoteFolderThumbnail" false
 
@@ -180,22 +181,19 @@
           kwriteconfig6 --file kwinrc --group "Xwayland" --key "Scale" 1.15
           kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" 1
 
-          killall dolphin 2>/dev/null
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "ConsolePanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InfoPanelVisible" false
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "PlacesPanelVisible" true
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "FoldersPanelVisible" true
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "State" ""
           kwriteconfig6 --file dolphinrc --group "MainWindow" --key "InhibitStackedPanels" true
-          kwriteconfig6 --file dolphinrc --group "General" --key "LockPanels" false 
-          kwriteconfig6 --file dolphinrc --group "KFileDialog Settings" --key "Places Icons Static Size" 22
 
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "CursorFeedbackRotation" false
           kwriteconfig6 --file klaunchrc --group "FeedbackStyle" --key "TaskbarButtonAnimation" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Blinking" false
           kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
 
-          kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 0
+          kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
           kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
       when: ansible_hostname == "zatestvmtest01"
 
