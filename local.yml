@@ -129,7 +129,7 @@
               Name=Ratel
               Parent=FALLBACK/
 
-        - name: KDE Customization - Deploy desktop theme script
+        - name: KDE Customization - Desktop Theme Script
           copy:
             dest: /home/ratel/.local/bin/apply-kde-theme.sh
             owner: ratel
@@ -203,10 +203,72 @@
               kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Static" false
               kwriteconfig6 --file klaunchrc --group "BusyCursorSettings" --key "Timeout" 0
 
-              # 7. Keyboard (NumLock ON)
+              # 7. Plasma Taskbar Pinned Icons & Start Menu Favorites ---
+              APPLETSRC="/home/ratel/.config/plasma-org.kde.plasma.desktop-appletsrc"
+              if [ -f "$APPLETSRC" ]; then
+                  # Stop plasmashell so memory state isn't written back to disk
+                  killall -9 plasmashell 2>/dev/null
+                  # 1. Update Taskbar Pinned Launchers (Containment 2 -> Applet 5)
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "5" --group "Configuration" --group "General" \
+                                --key "launchers" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
+                  # 2. Update Kickoff Start Menu Favorites (Containment 2 -> Applet 3)
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                                --key "favorites" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                                --key "systemFavorites" "suspend,hibernate,reboot,shutdown"
+                  # 3. Clean up any orphan keys in top-level Applets sections
+                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "3" --group "Configuration" --group "General" --key "favorites" --delete 2>/dev/null
+                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "5" --group "Configuration" --group "General" --key "launchers" --delete 2>/dev/null
+                  # 4. Rebuild service index cache
+                  kbuildsycoca6 --noincremental 2>/dev/null
+              fi
+
+              # 8. Plasma Kickoff Favorites Icons
+              export QT_QPA_PLATFORM=offscreen
+
+              # Stop processes to release locks on config files and databases
+              killall -9 plasmashell kactivitymanagerd 2>/dev/null
+              APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+              # Clear KActivity Stats database cache
+              rm -rf "$HOME/.local/share/kactivitymanagerd/resources/"*
+              if [ -f "$APPLETSRC" ]; then
+
+                  # Configure Taskbar Pinned Icons (System Settings -> Brave -> Dolphin -> Konsole)
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "5" --group "Configuration" --group "General" \
+                                --key "launchers" "applications:systemsettings.desktop,applications:com.brave.Browser.nightly.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop"
+
+                  # Configure Kickoff Start Menu Favorites (System Monitor -> System Settings -> Discover -> Dolphin -> Brave)
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                                --key "favorites" "applications:org.kde.plasma-systemmonitor.desktop,applications:systemsettings.desktop,applications:org.kde.discover.desktop,applications:org.kde.dolphin.desktop,applications:com.brave.Browser.nightly.desktop"
+
+                  # Disable KAstats porting flag so Kickoff reads directly from appletsrc
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                                --key "favoritesPortedToKAstats" "false"
+
+                  # Restrict system favorites to power actions
+                  kwriteconfig6 --file "$APPLETSRC" \
+                                --group "Containments" --group "2" --group "Applets" --group "3" --group "Configuration" --group "General" \
+                                --key "systemFavorites" "suspend,hibernate,reboot,shutdown"
+
+                  # Clean up orphan top-level Applets keys
+                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "3" --group "Configuration" --group "General" --key "favorites" --delete 2>/dev/null
+                  kwriteconfig6 --file "$APPLETSRC" --group "Applets" --group "5" --group "Configuration" --group "General" --key "launchers" --delete 2>/dev/null
+
+                  # Rebuild service index cache
+                  kbuildsycoca6 --noincremental 2>/dev/null
+              fi
+
+              # 8. Keyboard (NumLock ON)
               kwriteconfig6 --file kcminputrc --group "Keyboard" --key "NumLock" 1
 
-              # 8. Konsole Default Profile
+              # 9. Konsole Default Profile
               kwriteconfig6 --file konsolerc --group "Desktop Entry" --key "DefaultProfile" "Ratel.profile"
 
         - name: KDE Customization - Execute theme script offscreen as ratel user
@@ -216,6 +278,98 @@
           environment:
             HOME: /home/ratel
             USER: ratel
+
+        - name: KDE Customization - Deploy filtered Places sidebar
+          copy:
+            dest: /home/ratel/.local/share/user-places.xbel
+            owner: ratel
+            group: ratel
+            mode: '0644'
+            content: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <!DOCTYPE xbel>
+              <xbel xmlns:bookmark="http://www.freedesktop.org/standards/desktop-bookmarks" xmlns:kdepriv="http://www.kde.org/kdepriv">
+               <bookmark href="file:///home/ratel">
+                <title>Home</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="user-home"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="file:///home/ratel/Desktop">
+                <title>Desktop</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="user-desktop"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="trash:/">
+                <title>Trash</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="user-trash"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="remote:/">
+                <title>Network</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="folder-network"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="file:///home/ratel/Downloads">
+                <title>Downloads</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="folder-download"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                  <IsHidden>true</IsHidden>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="timeline:/today">
+                <title>Today</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="go-today"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                  <IsHidden>true</IsHidden>
+                 </metadata>
+                </info>
+               </bookmark>
+               <bookmark href="timeline:/history">
+                <title>History</title>
+                <info>
+                 <metadata owner="http://freedesktop.org">
+                  <bookmark:icon name="view-history"/>
+                 </metadata>
+                 <metadata owner="http://www.kde.org">
+                  <IsSystemItem>true</IsSystemItem>
+                  <IsHidden>true</IsHidden>
+                 </metadata>
+                </info>
+               </bookmark>
+              </xbel>
 
         # --- Boot & System Targets ---
         - name: Desktop Specific - Set default boot target to Graphical UI
