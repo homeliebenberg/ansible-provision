@@ -65,6 +65,12 @@
             path: /etc/apt/sources.list.d/brave-browser-nightly.list
             state: absent
 
+        - name: Brave Nightly - Force APT repository update
+          command: apt-get update
+          changed_when: false
+          environment:
+            DEBIAN_FRONTEND: noninteractive
+        
         - name: Brave Nightly - Install package
           apt:
             name: brave-browser-nightly
